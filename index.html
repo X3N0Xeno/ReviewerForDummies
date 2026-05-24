@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal_Test // Practice Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Gothic Noir / Digital Grunge Variables */
+        body {
+            background-color: #030303; 
+            color: #d1d5db;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .cyan-glow {
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        .btn-option {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-option:disabled {
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        /* Custom scrollbar for aesthetic */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #008b8b; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ffff; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex justify-center selection:bg-cyan-900 selection:text-cyan-100">
+    
+    <div class="w-full max-w-3xl">
+        
+        <header class="border-b-2 border-cyan-600 pb-4 mb-8">
+            <h1 class="text-3xl font-bold text-cyan-400 tracking-widest uppercase">System.Quiz.Parse()</h1>
+            <p class="text-sm text-gray-500 mt-2">Local execution environment. Parse, practice, and override.</p>
+        </header>
+
+        <div id="setup-view" class="space-y-6 block animate-fade-in">
+            <div>
+                <label class="block text-cyan-500 mb-2 font-bold uppercase tracking-wider">> Raw_Data_Input</label>
+                <textarea id="quiz-input" class="w-full h-80 bg-[#0a0a0a] text-gray-300 border border-cyan-900 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 p-5 rounded-none resize-y outline-none leading-relaxed" 
+placeholder="Paste your quiz here. Separate each question block with an empty line.
+
+Example Format:
+
+What is the best engine for GDScript?
+Unity
+Unreal
+Godot
+Answer: Godot
+
+What color absorbs the most light?
+White
+Vantablack
+Cyan
+Answer: Vantablack"></textarea>
+            </div>
+            
+            <div class="flex items-center space-x-3 p-2">
+                <input type="checkbox" id="scramble-toggle" class="w-5 h-5 accent-cyan-500 bg-[#0a0a0a] border-cyan-800 cursor-pointer">
+                <label for="scramble-toggle" class="text-gray-400 uppercase tracking-wide cursor-pointer hover:text-cyan-400 transition-colors">Enable Entropy (Scramble Questions)</label>
+            </div>
+
+            <button id="start-btn" class="w-full bg-cyan-950 hover:bg-cyan-800 text-cyan-400 hover:text-cyan-100 font-bold py-4 px-6 border border-cyan-500 uppercase tracking-widest transition-all cyan-glow">
+                Initialize_Practice_Run
+            </button>
+        </div>
+
+        <div id="quiz-view" class="hidden space-y-10 pb-20">
+            <div id="questions-container" class="space-y-10">
+                </div>
+            
+            <button id="reset-btn" class="w-full bg-[#0a0a0a] hover:bg-[#111] text-gray-500 hover:text-cyan-400 font-bold py-4 px-6 border border-gray-800 hover:border-cyan-800 uppercase tracking-widest mt-12 transition-colors">
+                Terminate & Restart_System
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Core Engine Variables
+        const setupView = document.getElementById('setup-view');
+        const quizView = document.getElementById('quiz-view');
+        const quizInput = document.getElementById('quiz-input');
+        const scrambleToggle = document.getElementById('scramble-toggle');
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const questionsContainer = document.getElementById('questions-container');
+
+        // State Transition: Start
+        startBtn.addEventListener('click', () => {
+            const rawText = quizInput.value;
+            if (!rawText.trim()) {
+                alert('ERR_01: Input stream empty. Paste data before initializing.');
+                return;
+            }
+
+            let parsedQuiz = parseTextEngine(rawText);
+            
+            if (scrambleToggle.checked) {
+                parsedQuiz = scrambleArray(parsedQuiz);
+            }
+
+            renderInterface(parsedQuiz);
+            setupView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            window.scrollTo(0, 0);
+        });
+
+        // State Transition: Reset
+        resetBtn.addEventListener('click', () => {
+            quizView.classList.add('hidden');
+            setupView.classList.remove('hidden');
+            questionsContainer.innerHTML = '';
+            window.scrollTo(0, 0);
+        });
+
+        // Lexical Parser
+        function parseTextEngine(text) {
+            // Split by double line breaks
+            const blocks = text.trim().split(/\n\s*\n/);
+            const validData = [];
+
+            blocks.forEach((block, index) => {
+                const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+                if (lines.length < 3) return; // Failsafe: Needs Question, >=1 Option, Answer
+
+                const question = lines[0];
+                const options = lines.slice(1, lines.length - 1);
+                const rawAnswer = lines[lines.length - 1];
+                
+                // Scrub prefixes like "Answer:" or "Ans:"
+                const cleanAnswer = rawAnswer.replace(/^(Answer:|Ans:|Answer)\s*/i, '').trim();
+
+                validData.push({
+                    id: `q_${index}`,
+                    question: question,
+                    options: options,
+                    answer: cleanAnswer
+                });
+            });
+            return validData;
+        }
+
+        // Fisher-Yates Scrambler
+        function scrambleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // DOM Rendering Engine
+        function renderInterface(quizData) {
+            questionsContainer.innerHTML = '';
+
+            quizData.forEach((item, index) => {
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'p-6 md:p-8 bg-[#070707] border-l-4 border-cyan-800 shadow-lg';
+                
+                const qText = document.createElement('h3');
+                qText.className = 'text-xl font-bold text-gray-200 mb-6 leading-relaxed';
+                qText.innerText = `${index + 1}. ${item.question}`;
+                blockDiv.appendChild(qText);
+
+                const optionsContainer = document.createElement('div');
+                optionsContainer.className = 'flex flex-col space-y-3';
+                
+                item.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-option text-left px-5 py-4 bg-[#0a0a0a] border border-gray-800 text-gray-400 hover:border-cyan-600 hover:text-cyan-200 hover:bg-[#0f172a]';
+                    btn.innerText = opt;
+                    
+                    btn.addEventListener('click', () => {
+                        evaluateSelection(btn, opt, item.answer, optionsContainer);
+                    });
+                    
+                    optionsContainer.appendChild(btn);
+                });
+
+                blockDiv.appendChild(optionsContainer);
+                questionsContainer.appendChild(blockDiv);
+            });
+        }
+
+        // Logic Evaluation
+        function evaluateSelection(selectedBtn, selectedText, correctAnswer, container) {
+            const allButtons = container.querySelectorAll('button');
+            
+            // Lock UI for this specific block instantly
+            allButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('hover:border-cyan-600', 'hover:bg-[#0f172a]', 'hover:text-cyan-200');
+                
+                // Identify and highlight correct answer automatically
+                if (btn.innerText.toLowerCase() === correctAnswer.toLowerCase()) {
+                    btn.classList.remove('bg-[#0a0a0a]', 'border-gray-800', 'text-gray-400');
+                    btn.classList.add('bg-[#064e3b]', 'border-[#10b981]', 'text-[#34d399]'); // Emerald/Green
+                }
+            });
+
+            // Handle user miss (Red highlight)
+            if (selectedText.toLowerCase() !== correctAnswer.toLowerCase()) {
+                selectedBtn.classList.remove('bg-[#0a0a0a]', 'border-gray-800', 'text-gray-400');
+                selectedBtn.classList.add('bg-[#7f1d1d]', 'border-[#ef4444]', 'text-[#fca5a5]'); // Crimson/Red
+            }
+        }
+    </script>
+</body>
+</html>
