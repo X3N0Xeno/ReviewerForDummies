@@ -6,7 +6,6 @@
     <title>Terminal_Test // Practice Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Gothic Noir / Digital Grunge Variables */
         body {
             background-color: #030303; 
             color: #d1d5db;
@@ -22,7 +21,6 @@
             cursor: not-allowed;
             opacity: 0.8;
         }
-        /* Custom scrollbar for aesthetic */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #0a0a0a; }
         ::-webkit-scrollbar-thumb { background: #008b8b; }
@@ -35,28 +33,23 @@
         
         <header class="border-b-2 border-cyan-600 pb-4 mb-8">
             <h1 class="text-3xl font-bold text-cyan-400 tracking-widest uppercase">System.Quiz.Parse()</h1>
-            <p class="text-sm text-gray-500 mt-2">Local execution environment. Parse, practice, and override.</p>
+            <p class="text-sm text-gray-500 mt-2">Local execution environment. Upload, practice, and override.</p>
         </header>
 
-        <div id="setup-view" class="space-y-6 block animate-fade-in">
+        <div id="setup-view" class="space-y-6 block">
             <div>
-                <label class="block text-cyan-500 mb-2 font-bold uppercase tracking-wider">> Raw_Data_Input</label>
-                <textarea id="quiz-input" class="w-full h-80 bg-[#0a0a0a] text-gray-300 border border-cyan-900 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 p-5 rounded-none resize-y outline-none leading-relaxed" 
-placeholder="Paste your quiz here. Separate each question block with an empty line.
-
-Example Format:
-
-What is the best engine for GDScript?
-Unity
-Unreal
-Godot
-Answer: Godot
-
-What color absorbs the most light?
-White
-Vantablack
-Cyan
-Answer: Vantablack"></textarea>
+                <label class="block text-cyan-500 mb-2 font-bold uppercase tracking-wider">> Load_Quiz_File (.txt)</label>
+                
+                <input type="file" id="file-input" accept=".txt" class="hidden">
+                
+                <label for="file-input" id="drop-zone" class="flex flex-col items-center justify-center w-full h-64 bg-[#0a0a0a] border-2 border-dashed border-cyan-900 hover:border-cyan-400 p-6 text-center cursor-pointer transition-all">
+                    <span id="file-status-text" class="text-gray-400 text-lg uppercase tracking-wider font-bold">
+                        Click or Drag to Upload Quiz.txt
+                    </span>
+                    <span class="text-xs text-gray-600 mt-3">
+                        Must follow standard Question / Options / Answer format blocks
+                    </span>
+                </label>
             </div>
             
             <div class="flex items-center space-x-3 p-2">
@@ -64,7 +57,7 @@ Answer: Vantablack"></textarea>
                 <label for="scramble-toggle" class="text-gray-400 uppercase tracking-wide cursor-pointer hover:text-cyan-400 transition-colors">Enable Entropy (Scramble Questions)</label>
             </div>
 
-            <button id="start-btn" class="w-full bg-cyan-950 hover:bg-cyan-800 text-cyan-400 hover:text-cyan-100 font-bold py-4 px-6 border border-cyan-500 uppercase tracking-widest transition-all cyan-glow">
+            <button id="start-btn" class="w-full bg-cyan-950 hover:bg-cyan-800 text-cyan-400 hover:text-cyan-100 font-bold py-4 px-6 border border-cyan-500 uppercase tracking-widest transition-all cyan-glow opacity-50 cursor-not-allowed" disabled>
                 Initialize_Practice_Run
             </button>
         </div>
@@ -84,21 +77,62 @@ Answer: Vantablack"></textarea>
         // Core Engine Variables
         const setupView = document.getElementById('setup-view');
         const quizView = document.getElementById('quiz-view');
-        const quizInput = document.getElementById('quiz-input');
+        const fileInput = document.getElementById('file-input');
+        const fileStatusText = document.getElementById('file-status-text');
         const scrambleToggle = document.getElementById('scramble-toggle');
         const startBtn = document.getElementById('start-btn');
         const resetBtn = document.getElementById('reset-btn');
         const questionsContainer = document.getElementById('questions-container');
 
-        // State Transition: Start
-        startBtn.addEventListener('click', () => {
-            const rawText = quizInput.value;
-            if (!rawText.trim()) {
-                alert('ERR_01: Input stream empty. Paste data before initializing.');
-                return;
-            }
+        let rawFileContent = "";
 
-            let parsedQuiz = parseTextEngine(rawText);
+        // File State Listener
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileStatusText.innerText = `READY // LOADING: ${file.name.toUpperCase()}`;
+            fileStatusText.classList.remove('text-gray-400');
+            fileStatusText.classList.add('text-cyan-400');
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                rawFileContent = evt.target.result;
+                // Enable the launch button now that file data exists in memory
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            };
+            reader.readAsText(file);
+        });
+
+        // Drag and Drop aesthetics handler
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-cyan-400', 'bg-cyan-950/20');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-cyan-400', 'bg-cyan-950/20');
+            }, false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if(files.length) {
+                fileInput.files = files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // State Transition: Start Execution Run
+        startBtn.addEventListener('click', () => {
+            if (!rawFileContent.trim()) return;
+
+            let parsedQuiz = parseTextEngine(rawFileContent);
             
             if (scrambleToggle.checked) {
                 parsedQuiz = scrambleArray(parsedQuiz);
@@ -115,24 +149,29 @@ Answer: Vantablack"></textarea>
             quizView.classList.add('hidden');
             setupView.classList.remove('hidden');
             questionsContainer.innerHTML = '';
+            fileInput.value = ""; // Clear file target
+            rawFileContent = "";
+            fileStatusText.innerText = "Click or Drag to Upload Quiz.txt";
+            fileStatusText.classList.remove('text-cyan-400');
+            fileStatusText.classList.add('text-gray-400');
+            startBtn.disabled = true;
+            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
             window.scrollTo(0, 0);
         });
 
         // Lexical Parser
         function parseTextEngine(text) {
-            // Split by double line breaks
             const blocks = text.trim().split(/\n\s*\n/);
             const validData = [];
 
             blocks.forEach((block, index) => {
                 const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-                if (lines.length < 3) return; // Failsafe: Needs Question, >=1 Option, Answer
+                if (lines.length < 3) return; 
 
                 const question = lines[0];
                 const options = lines.slice(1, lines.length - 1);
                 const rawAnswer = lines[lines.length - 1];
                 
-                // Scrub prefixes like "Answer:" or "Ans:"
                 const cleanAnswer = rawAnswer.replace(/^(Answer:|Ans:|Answer)\s*/i, '').trim();
 
                 validData.push({
@@ -192,29 +231,21 @@ Answer: Vantablack"></textarea>
         function evaluateSelection(selectedBtn, selectedText, correctAnswer, container) {
             const allButtons = container.querySelectorAll('button');
             
-            // Lock UI for this specific block instantly
             allButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('hover:border-cyan-600', 'hover:bg-[#0f172a]', 'hover:text-cyan-200');
                 
-                // Identify and highlight correct answer automatically
                 if (btn.innerText.toLowerCase() === correctAnswer.toLowerCase()) {
                     btn.classList.remove('bg-[#0a0a0a]', 'border-gray-800', 'text-gray-400');
-                    btn.classList.add('bg-[#064e3b]', 'border-[#10b981]', 'text-[#34d399]'); // Emerald/Green
+                    btn.classList.add('bg-[#064e3b]', 'border-[#10b981]', 'text-[#34d399]'); 
                 }
             });
 
-            // Handle user miss (Red highlight)
             if (selectedText.toLowerCase() !== correctAnswer.toLowerCase()) {
                 selectedBtn.classList.remove('bg-[#0a0a0a]', 'border-gray-800', 'text-gray-400');
-                selectedBtn.classList.add('bg-[#7f1d1d]', 'border-[#ef4444]', 'text-[#fca5a5]'); // Crimson/Red
+                selectedBtn.classList.add('bg-[#7f1d1d]', 'border-[#ef4444]', 'text-[#fca5a5]'); 
             }
         }
-        // Auto-expand textarea based on content size
-        quizInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
-        });
     </script>
 </body>
 </html>
