@@ -210,6 +210,11 @@ Answer: Vantablack"></textarea>
                 selectedBtn.classList.add('bg-[#7f1d1d]', 'border-[#ef4444]', 'text-[#fca5a5]'); // Crimson/Red
             }
         }
+        // Auto-expand textarea based on content size
+        quizInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = this.scrollHeight + 'px';
+        });
     </script>
 </body>
 </html>
