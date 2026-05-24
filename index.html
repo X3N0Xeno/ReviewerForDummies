@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal_Test // Practice Engine</title>
+    <title>Anti Retardation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -31,17 +31,20 @@
     
     <div class="w-full max-w-3xl">
         
-        <header class="border-b-2 border-cyan-600 pb-4 mb-8">
-            <h1 class="text-3xl font-bold text-cyan-400 tracking-widest uppercase">System.Quiz.Parse()</h1>
-            <p class="text-sm text-gray-500 mt-2">Local execution environment. Upload, practice, and override.</p>
+        <header class="border-b-2 border-cyan-600 pb-4 mb-8 flex justify-between items-end">
+            <div>
+                <h1 class="text-3xl font-bold text-cyan-400 tracking-widest uppercase">System.Quiz.Parse()</h1>
+                <p class="text-sm text-gray-500 mt-2">Local execution environment. Track, score, and evaluate.</p>
+            </div>
+            <div id="live-counter" class="hidden text-right font-bold text-cyan-600 tracking-wider text-sm">
+                PROGRESS: <span id="answered-count">0</span>/<span id="total-count">0</span>
+            </div>
         </header>
 
         <div id="setup-view" class="space-y-6 block">
             <div>
                 <label class="block text-cyan-500 mb-2 font-bold uppercase tracking-wider">> Load_Quiz_File (.txt)</label>
-                
                 <input type="file" id="file-input" accept=".txt" class="hidden">
-                
                 <label for="file-input" id="drop-zone" class="flex flex-col items-center justify-center w-full h-64 bg-[#0a0a0a] border-2 border-dashed border-cyan-900 hover:border-cyan-400 p-6 text-center cursor-pointer transition-all">
                     <span id="file-status-text" class="text-gray-400 text-lg uppercase tracking-wider font-bold">
                         Click or Drag to Upload Quiz.txt
@@ -66,6 +69,17 @@
             <div id="questions-container" class="space-y-10">
                 </div>
             
+            <div id="scorecard" class="hidden p-8 bg-[#0a0a0a] border-2 border-cyan-500 text-center space-y-4 cyan-glow">
+                <h2 class="text-2xl font-bold text-cyan-400 tracking-widest uppercase">// PERFORMANCE_METRICS_EVALUATED</h2>
+                <div class="text-5xl font-extrabold text-white tracking-wider my-4">
+                    SCORE: <span id="final-score" class="text-emerald-400">0</span> / <span id="final-total">0</span>
+                </div>
+                <div class="text-xl font-bold text-gray-400">
+                    ACCURACYRATING: <span id="final-percent" class="text-cyan-400">0%</span>
+                </div>
+                <p id="performance-grade" class="text-sm text-gray-500 italic uppercase tracking-wide"></p>
+            </div>
+
             <button id="reset-btn" class="w-full bg-[#0a0a0a] hover:bg-[#111] text-gray-500 hover:text-cyan-400 font-bold py-4 px-6 border border-gray-800 hover:border-cyan-800 uppercase tracking-widest mt-12 transition-colors">
                 Terminate & Restart_System
             </button>
@@ -83,8 +97,15 @@
         const startBtn = document.getElementById('start-btn');
         const resetBtn = document.getElementById('reset-btn');
         const questionsContainer = document.getElementById('questions-container');
+        const liveCounter = document.getElementById('live-counter');
+        const answeredCountEl = document.getElementById('answered-count');
+        const totalCountEl = document.getElementById('total-count');
+        const scorecard = document.getElementById('scorecard');
 
         let rawFileContent = "";
+        let totalQuestions = 0;
+        let answeredQuestions = 0;
+        let correctAnswersCount = 0;
 
         // File State Listener
         fileInput.addEventListener('change', (e) => {
@@ -98,7 +119,6 @@
             const reader = new FileReader();
             reader.onload = function(evt) {
                 rawFileContent = evt.target.result;
-                // Enable the launch button now that file data exists in memory
                 startBtn.disabled = false;
                 startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             };
@@ -133,10 +153,19 @@
             if (!rawFileContent.trim()) return;
 
             let parsedQuiz = parseTextEngine(rawFileContent);
-            
+            totalQuestions = parsedQuiz.length;
+            answeredQuestions = 0;
+            correctAnswersCount = 0;
+
             if (scrambleToggle.checked) {
                 parsedQuiz = scrambleArray(parsedQuiz);
             }
+
+            // Init tracking counters
+            totalCountEl.innerText = totalQuestions;
+            answeredCountEl.innerText = 0;
+            liveCounter.classList.remove('hidden');
+            scorecard.classList.add('hidden');
 
             renderInterface(parsedQuiz);
             setupView.classList.add('hidden');
@@ -148,8 +177,10 @@
         resetBtn.addEventListener('click', () => {
             quizView.classList.add('hidden');
             setupView.classList.remove('hidden');
+            liveCounter.classList.add('hidden');
+            scorecard.classList.add('hidden');
             questionsContainer.innerHTML = '';
-            fileInput.value = ""; // Clear file target
+            fileInput.value = ""; 
             rawFileContent = "";
             fileStatusText.innerText = "Click or Drag to Upload Quiz.txt";
             fileStatusText.classList.remove('text-cyan-400');
@@ -230,7 +261,12 @@
         // Logic Evaluation
         function evaluateSelection(selectedBtn, selectedText, correctAnswer, container) {
             const allButtons = container.querySelectorAll('button');
+            let matched = selectedText.toLowerCase() === correctAnswer.toLowerCase();
             
+            if (matched) {
+                correctAnswersCount++;
+            }
+
             allButtons.forEach(btn => {
                 btn.disabled = true;
                 btn.classList.remove('hover:border-cyan-600', 'hover:bg-[#0f172a]', 'hover:text-cyan-200');
@@ -241,10 +277,40 @@
                 }
             });
 
-            if (selectedText.toLowerCase() !== correctAnswer.toLowerCase()) {
+            if (!matched) {
                 selectedBtn.classList.remove('bg-[#0a0a0a]', 'border-gray-800', 'text-gray-400');
                 selectedBtn.classList.add('bg-[#7f1d1d]', 'border-[#ef4444]', 'text-[#fca5a5]'); 
             }
+
+            // Update Progression States
+            answeredQuestions++;
+            answeredCountEl.innerText = answeredQuestions;
+
+            // Trigger terminal scorecard if completion parameters are met
+            if (answeredQuestions === totalQuestions) {
+                displayFinalScorecard();
+            }
+        }
+
+        // Final Scoreboard Display Logic
+        function displayFinalScorecard() {
+            const percentage = Math.round((correctAnswersCount / totalQuestions) * 100);
+            
+            document.getElementById('final-score').innerText = correctAnswersCount;
+            document.getElementById('final-total').innerText = totalQuestions;
+            document.getElementById('final-percent').innerText = `${percentage}%`;
+
+            // Performance conditional evaluations
+            let gradingPhrase = "";
+            if (percentage === 100) gradingPhrase = "Perfect run. Matrix optimized.";
+            else if (percentage >= 85) gradingPhrase = "Excellent comprehension. High efficiency.";
+            else if (percentage >= 70) gradingPhrase = "Passing baseline cleared. Room for stabilization.";
+            else gradingPhrase = "Deficient accuracy. Re-run file configuration recommended.";
+
+            document.getElementById('performance-grade').innerText = `>> ${gradingPhrase}`;
+            
+            scorecard.classList.remove('hidden');
+            scorecard.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
